@@ -28,6 +28,7 @@ void devinit(struct termios *termctl);
 
 typedef struct trace_info_s
 {
+    int            prefix;
     int            hexdump;     /* output each block as a hexdump */
     int            timestamp;   /* preceed each line with a timestamp */
     char          *file;        /* open file.  NULL if not used */

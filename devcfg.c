@@ -86,12 +86,15 @@ devconfig(char *instr, dev_info_t *dinfo)
     dinfo->openstr = NULL;
     dinfo->closestr = NULL;
     dinfo->trace_read.file = NULL;
+    dinfo->trace_read.prefix = 0;
     dinfo->trace_read.hexdump = 0;
     dinfo->trace_read.timestamp = 0;
     dinfo->trace_write.file = NULL;
+    dinfo->trace_write.prefix = 0;
     dinfo->trace_write.hexdump = 0;
     dinfo->trace_write.timestamp = 0;
     dinfo->trace_both.file = NULL;
+    dinfo->trace_both.prefix = 0;
     dinfo->trace_both.hexdump = 0;
     dinfo->trace_both.timestamp = 0;
     pos = strtok_r(str, ", \t", &strtok_data);
@@ -165,6 +168,11 @@ devconfig(char *instr, dev_info_t *dinfo)
 	    dinfo->allow_2217 = 1;
 	} else if (strcmp(pos, "NOBREAK") == 0) {
 	    dinfo->disablebreak = 1;
+	} else if (strcmp(pos, "prefix") == 0 ||
+	           strcmp(pos, "-prefix") == 0) {
+	    dinfo->trace_read.prefix = (*pos != '-');
+	    dinfo->trace_write.prefix = (*pos != '-');
+	    dinfo->trace_both.prefix = (*pos != '-');
 	} else if (strcmp(pos, "hexdump") == 0 ||
 	           strcmp(pos, "-hexdump") == 0) {
 	    dinfo->trace_read.hexdump = (*pos != '-');
@@ -175,18 +183,27 @@ devconfig(char *instr, dev_info_t *dinfo)
 	    dinfo->trace_read.timestamp = (*pos != '-');
 	    dinfo->trace_write.timestamp = (*pos != '-');
 	    dinfo->trace_both.timestamp = (*pos != '-');
+	} else if (strcmp(pos, "tr-prefix") == 0 ||
+	           strcmp(pos, "-tr-prefix") == 0) {
+	    dinfo->trace_read.prefix = (*pos != '-');
 	} else if (strcmp(pos, "tr-hexdump") == 0 ||
 	           strcmp(pos, "-tr-hexdump") == 0) {
 	    dinfo->trace_read.hexdump = (*pos != '-');
 	} else if (strcmp(pos, "tr-timestamp") == 0 ||
 	           strcmp(pos, "-tr-timestamp") == 0) {
 	    dinfo->trace_read.timestamp = (*pos != '-');
+	} else if (strcmp(pos, "tw-prefix") == 0 ||
+	           strcmp(pos, "-tw-prefix") == 0) {
+	    dinfo->trace_write.prefix = (*pos != '-');
 	} else if (strcmp(pos, "tw-hexdump") == 0 ||
 	           strcmp(pos, "-tw-hexdump") == 0) {
 	    dinfo->trace_write.hexdump = (*pos != '-');
 	} else if (strcmp(pos, "tw-timestamp") == 0 ||
 	           strcmp(pos, "-tw-timestamp") == 0) {
 	    dinfo->trace_write.timestamp = (*pos != '-');
+	} else if (strcmp(pos, "tb-prefix") == 0 ||
+	           strcmp(pos, "-tb-prefix") == 0) {
+	    dinfo->trace_both.prefix = (*pos != '-');
 	} else if (strcmp(pos, "tb-hexdump") == 0 ||
 	           strcmp(pos, "-tb-hexdump") == 0) {
 	    dinfo->trace_both.hexdump = (*pos != '-');
