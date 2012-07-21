@@ -49,8 +49,8 @@
 
 extern selector_t *ser2net_sel;
 
-#define SERIAL "term"
-#define NET    "tcp "
+#define SERIAL "dev"
+#define NET    "tcp"
 
 /** BASED ON sshd.c FROM openssh.com */
 #ifdef HAVE_TCPD_H
@@ -162,12 +162,12 @@ typedef struct port_info
     int            tcp_to_dev_buf_start;	/* The first byte in
 						   the buffer that is
 						   ready to send. */
-    int            tcp_to_dev_buf_count;	/* The number of bytes
+    int            tcp_to_dev_buf_count;        /* The number of bytes
                                                    in the buffer to
                                                    send. */
-    struct controller_info *tcp_monitor; /* If non-null, send any input
-					    received from the TCP port
-					    to this controller port. */
+    trace_t        tcp_trace; /* If .file != -1, send any input
+                                 received from the TCP port
+                                 to this controller port. */
 
 
     /* Information use when transferring information from the terminal
@@ -184,9 +184,9 @@ typedef struct port_info
     int            dev_to_tcp_buf_count;	/* The number of bytes
                                                    in the buffer to
                                                    send. */
-    struct controller_info *dev_monitor; /* If non-null, send any input
-					    received from the device
-					    to this controller port. */
+    trace_t        dev_trace; /* If .file != -1, send any input
+                                 received from the device
+                                 to this controller port. */
 
     struct port_info *next;		/* Used to keep a linked list
 					   of these. */
@@ -383,7 +383,14 @@ init_port_data(port_info_t *port)
     port->timeout = 0;
     port->next = NULL;
     port->new_config = NULL;
-    port->tcp_monitor = NULL;
+    port->tcp_trace.file = -1;
+    port->tcp_trace.timestamp = 0;
+    port->tcp_trace.hexdump = 0;
+    port->tcp_trace.prefix = 0;
+    port->dev_trace.file = -1;
+    port->dev_trace.timestamp = 0;
+    port->dev_trace.hexdump = 0;
+    port->dev_trace.prefix = 0;
     
     port->devname = NULL;
     port->devfd = 0;
@@ -463,8 +470,8 @@ trace_write_end(char *out, int size, unsigned char *start, int col)
         pos += snprintf(out + pos, size - pos, "%c",
 			isprint(start[w]) ? start[w] : '.');
     }
-    strncat(out+pos, "|\n", size-pos);
-    pos += 2;
+    strncat(out+pos, "|\n\r", size-pos);
+    pos += 3;
     return pos;
 }
 
@@ -634,10 +641,9 @@ handle_dev_fd_read(int fd, void *data)
 					  PORT_BUFSIZE);
     }
 
-    if (port->dev_monitor != NULL) {
-	controller_write(port->dev_monitor,
-			 (char *) port->dev_to_tcp_buf,
-			 port->dev_to_tcp_buf_count);
+    if (port->dev_trace.file != -1) {
+    do_trace(port, &port->dev_trace,
+         port->dev_to_tcp_buf, port->dev_to_tcp_buf_count, SERIAL);
     }
 
     if (port->dev_to_tcp_buf_count < 0) {
@@ -820,10 +826,9 @@ handle_tcp_fd_read(int fd, void *data)
 	}
     }
 
-    if (port->tcp_monitor != NULL) {
-	controller_write(port->tcp_monitor,
-			 (char *) port->tcp_to_dev_buf,
-			 port->tcp_to_dev_buf_count);
+    if (port->tcp_trace.file != -1) {
+    do_trace(port, &port->tcp_trace,
+         port->tcp_to_dev_buf, port->tcp_to_dev_buf_count, NET);
     }
 
     if (port->wt.file != -1)
@@ -2619,18 +2624,34 @@ data_monitor_start(struct controller_info *cntlr,
 	return NULL;
     }
 
-    if ((port->tcp_monitor != NULL) || (port->dev_monitor != NULL)) {
+    if ((port->tcp_trace.file != -1) || (port->dev_trace.file != -1)) {
 	char *err = "Port is already being monitored";
 	controller_output(cntlr, err, strlen(err));
 	controller_output(cntlr, "\n\r", 2);
 	return NULL;
     }
  
-    if (strcmp(type, "tcp") == 0) {
-	port->tcp_monitor = cntlr;
+    if (strcmp(type, "tb") == 0) {
+    port->tcp_trace.file = controller_tcpfd(cntlr);
+    port->tcp_trace.hexdump = port->dinfo.trace_both.hexdump;
+    port->tcp_trace.timestamp = port->dinfo.trace_both.timestamp;
+    port->tcp_trace.prefix = port->dinfo.trace_both.prefix;
+    port->dev_trace.file = controller_tcpfd(cntlr);
+    port->dev_trace.hexdump = port->dinfo.trace_both.hexdump;
+    port->dev_trace.timestamp = port->dinfo.trace_both.timestamp;
+    port->dev_trace.prefix = port->dinfo.trace_both.prefix;
 	return port;
-    } else if (strcmp(type, "term") == 0) {
-	port->dev_monitor = cntlr;
+    } else if (strcmp(type, "tw") == 0) {
+    port->tcp_trace.file = controller_tcpfd(cntlr);
+    port->tcp_trace.hexdump = port->dinfo.trace_write.hexdump;
+    port->tcp_trace.timestamp = port->dinfo.trace_write.timestamp;
+    port->tcp_trace.prefix = port->dinfo.trace_write.prefix;
+	return port;
+    } else if (strcmp(type, "tr") == 0) {
+    port->dev_trace.file = controller_tcpfd(cntlr);
+    port->dev_trace.hexdump = port->dinfo.trace_read.hexdump;
+    port->dev_trace.timestamp = port->dinfo.trace_read.timestamp;
+    port->dev_trace.prefix = port->dinfo.trace_read.prefix;
 	return port;
     } else {
 	 char *err = "invalid monitor type: ";
@@ -2648,8 +2669,8 @@ data_monitor_stop(struct controller_info *cntlr,
 {
     port_info_t *port = (port_info_t *) monitor_id;
 
-    port->tcp_monitor = NULL;
-    port->dev_monitor = NULL;
+    port->tcp_trace.file = -1;
+    port->dev_trace.file = -1;
 }
 
 void

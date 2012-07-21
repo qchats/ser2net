@@ -231,6 +231,12 @@ controller_write(struct controller_info *cntlr, char *data, int count)
     write_ignore_fail(cntlr->tcpfd, data, count);
 }
 
+int
+controller_tcpfd(struct controller_info *cntlr)
+{
+    return cntlr->tcpfd;
+}
+
 static void
 telnet_output_ready(void *cb_data)
 {
@@ -255,7 +261,7 @@ static char *help_str =
 "version - display the version of this program.\n\r"
 "monitor <type> <tcp port> - display all the input for a given port on\n\r"
 "       the calling control port.  Only one direction may be monitored\n\r"
-"       at a time.  The type field may be 'tcp' or 'term' and specifies\n\r"
+"       at a time.  The type field may be 'tb', 'tr' or 'tw' and specifies\n\r"
 "       whether to monitor data from the TCP port or from the serial port\n\r"
 "       Note that data monitoring is best effort, if the controller port\n\r"
 "       cannot keep up the data will be silently dropped.  A controller\n\r"
