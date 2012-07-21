@@ -264,9 +264,12 @@ trace both read and written data to the same file.  Note that this is
 independent of tr and tw, so you may be tracing read, write, and both
 to different files.
 
+.I [-]prefix
+adds (- removes) a prefix 'tcp' (or 'dev') output to all trace files.
+
 .I [-]hexdump
 turns on (- turns off) hexdump output to all trace files.  Each line in the
-trace file will be 8 (or less) bytes in canonical hex+ASCII format.  This is
+trace file will be 16 (or less) bytes in canonical hex+ASCII format.  This is
 useful for debuging a binary protocol.
 
 .I [-]timestamp
@@ -274,6 +277,10 @@ adds (- removes) a timestamp to all of the trace files. A timestamp
 is prepended to each line if hexdump is active for the trace file.  A
 timestamped line is also recorded in the trace file when a remote client
 connects or disconnects from the port.
+
+.I [-][tr-|tw-|tb-]prefix
+adds (- removes) a prefix to only one the trace files
+May be combined with [-]prefix.  Order is important.
 
 .I [-][tr-|tw-|tb-]hexdump
 turns on (- turns off) hexdump output for only one trace file.

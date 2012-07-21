@@ -86,6 +86,7 @@ char *enabled_str[] = { "off", "raw", "rawlp", "telnet" };
 
 typedef struct trace_s
 {
+    int            prefix;
     int            hexdump;     /* output each block as a hexdump */
     int            timestamp;   /* preceed each line with a timestamp */
     int            file;        /* open file.  -1 if not used */
@@ -404,12 +405,15 @@ init_port_data(port_info_t *port)
     port->wt.file = -1;
     port->wt.timestamp = 0;
     port->wt.hexdump = 0;
+    port->wt.prefix = 0;
     port->rt.file = -1;
     port->rt.timestamp = 0;
     port->rt.hexdump = 0;
+    port->rt.prefix = 0;
     port->bt.file = -1;
     port->bt.timestamp = 0;
     port->bt.hexdump = 0;
+    port->bt.prefix = 0;
 }
 
 void
@@ -441,6 +445,14 @@ timestamp(trace_t *tr, char *buf, int size)
 }
 
 static int
+isprefix(trace_t *tr, char *buf, int size, char *prefix)
+{
+    if(!tr->prefix)
+        return 0;
+    return snprintf(buf, size, "%s ", prefix);
+}
+
+static int
 trace_write_end(char *out, int size, unsigned char *start, int col)
 {
     int pos=0, w;
@@ -468,29 +480,33 @@ trace_write(port_info_t *port, trace_t *tr, unsigned char *buf,
     if( buf_len == 0 ) 
         return 0;
 
-    if(!tr->hexdump)
-        return write(file, buf, buf_len);
-
     pos = timestamp(tr, out, sizeof(out));    
-    pos += snprintf(out + pos, sizeof(out) - pos, "%s ", prefix);
-        
+    pos += isprefix(tr, out + pos, sizeof(out) - pos, prefix);
+
+    if(!tr->hexdump) {
+        rv = sizeof(out) - pos;
+        buf_len = rv < buf_len ? rv : buf_len;
+        memcpy(out + pos, buf, buf_len);
+        return write(file, buf, buf_len);
+    }
+
     start = buf;
     for (q = 0; q < buf_len; q++) {
         pos += snprintf(out + pos, sizeof(out) - pos, "%02x ", buf[q]);
         col++;
-        if (col >= 8) {
+        if (col >= 16) {
             pos += trace_write_end(out + pos, sizeof(out) - pos, start, col);
             rv = write(file, out, strlen(out));
             if (rv < 0)
-                return rv;           
-            pos = timestamp(tr, out, sizeof(out));    
-            pos += snprintf(out + pos, sizeof(out) - pos, "%s ", prefix);
+                return rv;
+            pos = timestamp(tr, out, sizeof(out));
+            pos += isprefix(tr, out + pos, sizeof(out) - pos, prefix);
             col = 0;
             start = buf + q + 1;
         }
     }
     if ( col > 0 ) {
-        for (w = 8; w > col; w--) {
+        for (w = 16; w > col; w--) {
             strncat(out + pos, "   ", sizeof(out) - pos);
             pos += 3;
         }
@@ -1479,6 +1495,7 @@ open_trace_file(port_info_t *port,
 		   trfile, errbuf);
     }
     else {
+        out->prefix = in->prefix;
         out->hexdump = in->hexdump;
         out->timestamp = in->timestamp;
     }
@@ -1506,6 +1523,7 @@ setup_trace(port_info_t *port)
 	    port->rt.file = port->wt.file;
 	    port->rt.timestamp = port->wt.timestamp;
 	    port->rt.hexdump   = port->wt.hexdump;
+	    port->rt.prefix   = port->wt.prefix;
 	    goto try_both;
 	}
 	open_trace_file(port, &port->dinfo.trace_read, &port->rt, &tv);
@@ -1519,6 +1537,7 @@ setup_trace(port_info_t *port)
 	    port->bt.file = port->wt.file;
 	    port->bt.timestamp = port->wt.timestamp;
 	    port->bt.hexdump   = port->wt.hexdump;
+	    port->bt.prefix   = port->wt.prefix;
 	    goto out;
 	} else if (port->dinfo.trace_read.file
 	    && (strcmp(port->dinfo.trace_both.file,
@@ -1526,6 +1545,7 @@ setup_trace(port_info_t *port)
 	    port->bt.file = port->rt.file;
 	    port->bt.timestamp = port->rt.timestamp;
 	    port->bt.hexdump   = port->rt.hexdump;
+	    port->bt.prefix   = port->rt.prefix;
 	    goto out;
 	}
 	open_trace_file(port, &port->dinfo.trace_both, &port->bt, &tv);
