@@ -487,13 +487,13 @@ trace_write(port_info_t *port, trace_t *tr, unsigned char *buf,
     if( buf_len == 0 ) 
         return 0;
 
-    pos = timestamp(tr, out, sizeof(out));    
+    pos = timestamp(tr, out, sizeof(out));
     pos += isprefix(tr, out + pos, sizeof(out) - pos, prefix);
 
     if(!tr->hexdump) {
-        rv = sizeof(out) - pos;
-        buf_len = rv < buf_len ? rv : buf_len;
-        memcpy(out + pos, buf, buf_len);
+        rv = write(file, out, pos);
+        if (rv < 0)
+            return rv;
         return write(file, buf, buf_len);
     }
 
@@ -575,13 +575,13 @@ header_trace(port_info_t *port)
 		buf + len, sizeof(buf) - len,
 		portstr, sizeof(portstr), NI_NUMERICHOST);
     len += strlen(buf + len);
-    len += snprintf(buf + len, sizeof(buf) - len, ")\n");
     if ((sizeof(buf) - len) > 2) {
 	buf[len] = ':';
 	len++;
     }
     strncpy(buf + len, portstr, sizeof(buf) - len);
     len += strlen(buf + len);
+    len += snprintf(buf + len, sizeof(buf) - len, ")\n");
 
     if (port->rt.file != -1 && port->rt.timestamp) {
         write_ignore_fail(port->rt.file, buf, len);
