@@ -415,7 +415,6 @@ init_port_data(port_info_t *port)
     port->devstr = NULL;
     port->closestr = NULL;
     port->is_2217 = 0;
-    port->dev_monitor = NULL;
     port->break_set = 0;
     port->dinfo.disablebreak = 0;
     port->wt.file = -1;
@@ -640,7 +639,7 @@ handle_dev_fd_read(int fd, void *data)
 
     if (port->dev_trace.file != -1) {
     do_trace(port, &port->dev_trace,
-         port->dev_to_tcp_buf, port->dev_to_tcp_buf_count, SERIAL);
+         port->dev_to_tcp.buf, count, SERIAL);
     }
 
     if (count < 0) {
@@ -853,7 +852,7 @@ handle_tcp_fd_read(int fd, void *data)
 
     if (port->tcp_trace.file != -1) {
     do_trace(port, &port->tcp_trace,
-         port->tcp_to_dev_buf, port->tcp_to_dev_buf_count, NET);
+         port->tcp_to_dev.buf, port->tcp_to_dev.cursize, NET);
     }
 
     if (port->wt.file != -1)
